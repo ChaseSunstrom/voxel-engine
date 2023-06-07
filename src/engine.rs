@@ -1,15 +1,14 @@
-use bevy::app::App;
-use bevy::DefaultPlugins;
-use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
-use bevy::prelude::*;
-use bevy::time::TimePlugin;
-use bevy_flycam::{NoCameraPlayerPlugin, FlyCam};
+use bevy::{
+    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
+    prelude::*,
+};
+use bevy_flycam::NoCameraPlayerPlugin;
 
 use crate::{camera, render};
 
 //these are useless at the moment
-const WINDOW_HEIGHT: f32 = 1280.0;
-const WINDOW_WIDTH: f32 = 1920.0;
+const _WINDOW_HEIGHT: f32 = 1280.0;
+const _WINDOW_WIDTH: f32 = 1920.0;
 
 pub fn start() {
     App::new()
