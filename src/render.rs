@@ -12,7 +12,7 @@ pub fn render_cubes(
         ..default()
     });
     for x in -10..10 {
-        for z in -10..10 {
+        for z in -10..10 { 
             for y in -10..10 {
                 commands.spawn(PbrBundle {
                     mesh: mesh.clone(),

@@ -13,10 +13,10 @@ pub fn fps_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         TextBundle::from_section(
             "FPS: 120",
             TextStyle {
-                // https://www.dafont.com/help-me.font
-                font: asset_server.load("fonts/help_me/HelpMe.ttf"),
+                // https://www.dafont.com/vcr-osd-mono.font
+                font: asset_server.load("fonts/VCR_OSD_MONO_1.001.ttf"),
                 font_size: 42.0,
-                color: Color::BLACK,
+                color: Color::WHITE,
             },
         )
         .with_text_alignment(TextAlignment::Left)
@@ -33,7 +33,9 @@ pub fn fps_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     ));
 }
 
-pub fn fps_system(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, With<FpsText>>) {
+pub fn fps_system(
+    diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, With<FpsText>>
+) {
     if let Some(fps) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
         if let Some(fps) = fps.average() {
             let mut fps_text = query.single_mut();
