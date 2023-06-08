@@ -4,12 +4,9 @@ use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, time::common_cond
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy::pbr::DirectionalLightShadowMap;
 use bevy_flycam::NoCameraPlayerPlugin;
+use bevy_atmosphere::prelude::*;
 
 use crate::{camera, fps, lighting, render};
-
-//these are useless at the moment
-const _WINDOW_HEIGHT: f32 = 1280.0;
-const _WINDOW_WIDTH: f32 = 1920.0;
 
 pub fn start() {
     App::new()
@@ -18,6 +15,7 @@ pub fn start() {
         .add_plugins(DefaultPlugins)
         .add_plugin(NoCameraPlayerPlugin)
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
+        .add_plugin(AtmospherePlugin)
         .add_plugin(WorldInspectorPlugin::new())
         .add_startup_system(camera::init_camera)
         .add_startup_system(render::render_cubes)
