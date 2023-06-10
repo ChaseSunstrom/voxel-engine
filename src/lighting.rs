@@ -1,7 +1,6 @@
 use bevy::math::Vec3;
-use bevy::prelude::{Color, Commands, DirectionalLightBundle, DirectionalLight, Transform};
+use bevy::prelude::{Color, Commands, DirectionalLight, DirectionalLightBundle, Transform};
 use bevy::utils::default;
-
 
 pub fn create_light(mut commands: Commands) {
     commands.spawn(DirectionalLightBundle {

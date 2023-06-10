@@ -33,9 +33,7 @@ pub fn fps_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     ));
 }
 
-pub fn fps_system(
-    diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, With<FpsText>>
-) {
+pub fn fps_system(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, With<FpsText>>) {
     if let Some(fps) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
         if let Some(fps) = fps.average() {
             let mut fps_text = query.single_mut();

@@ -1,6 +1,6 @@
-use std::ops;
 use bevy::prelude::*;
 use rand::Rng;
+use std::ops;
 
 //no clue what this does
 pub fn render_cubes(
@@ -17,11 +17,15 @@ pub fn render_cubes(
     });
 
     for x in -10..10 {
-        for z in -10..10 { 
+        for z in -10..10 {
             for y in -10..10 {
                 commands.spawn(PbrBundle {
                     mesh: mesh.clone(),
-                    transform: Transform::from_xyz(x as f32*rng.gen::<f32>(), y as f32*rng.gen::<f32>(), z as f32*rng.gen::<f32>()),
+                    transform: Transform::from_xyz(
+                        x as f32 * rng.gen::<f32>(),
+                        y as f32 * rng.gen::<f32>(),
+                        z as f32 * rng.gen::<f32>(),
+                    ),
                     material: material.clone(),
                     ..default()
                 });
