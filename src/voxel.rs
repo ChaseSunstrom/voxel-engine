@@ -1,6 +1,7 @@
 use bevy::{
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology},
+    transform,
 };
 
 enum Face {
@@ -59,20 +60,19 @@ pub fn spawn_voxel(
     materials: ResMut<Assets<StandardMaterial>>,
     //voxel_material: Res<VoxelMaterial>,
 ) {
-    // TODO: provide this as a parameter and center voxel
-    let position = Vec3::new(-0.5, -0.5, -8.0);
+    // TODO: provide this as a parameter
+    let transform = Transform::from_xyz(0.0, 0.0, -8.0);
     commands
         .spawn(VoxelBundle {
             voxel: Voxel { kind: Kind::Grass },
             spacial: SpatialBundle {
-                transform: Transform::from_translation(position),
+                transform,
                 ..default()
             },
         })
         .with_children(|parent| {
             parent.spawn(create_voxel_face(
-                position,
-                Face::Front,
+                Face::Bottom,
                 meshes,
                 materials,
                 //voxel_material,
@@ -80,8 +80,10 @@ pub fn spawn_voxel(
         });
 }
 
+// TODO: put into some "global resource"
+const VOXEL_SIZE: f32 = 1.0;
+
 fn create_voxel_face(
-    voxel_position: Vec3,
     face: Face,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -93,17 +95,52 @@ fn create_voxel_face(
         ..default()
     });
     let mut mesh = Mesh::new(PrimitiveTopology::TriangleStrip);
-    // TODO: steal code from shape::Box to create faces
-    mesh.insert_attribute(
-        Mesh::ATTRIBUTE_POSITION,
-        vec![
-            // TODO: add voxel size and use that for the correct offsets
-            [0.0, 0.0, 0.0],
-            [1.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
-            [1.0, 1.0, 0.0],
+    let offset = VOXEL_SIZE / 2.0;
+    let vertices = &match face {
+        Face::Front => [
+            ([-offset, -offset, offset], Vec3::Z, Vec2::ZERO),
+            ([offset, -offset, offset], Vec3::Z, Vec2::X),
+            ([-offset, offset, offset], Vec3::Z, Vec2::Y),
+            ([offset, offset, offset], Vec3::Z, Vec2::ONE),
         ],
-    );
+        Face::Back => [
+            ([-offset, offset, -offset], Vec3::NEG_Z, Vec2::X),
+            ([offset, offset, -offset], Vec3::NEG_Z, Vec2::ZERO),
+            ([-offset, -offset, -offset], Vec3::NEG_Z, Vec2::ONE),
+            ([offset, -offset, -offset], Vec3::NEG_Z, Vec2::Y),
+        ],
+        Face::Right => [
+            ([offset, -offset, -offset], Vec3::X, Vec2::ZERO),
+            ([offset, offset, -offset], Vec3::X, Vec2::X),
+            ([offset, -offset, offset], Vec3::X, Vec2::Y),
+            ([offset, offset, offset], Vec3::X, Vec2::ONE),
+        ],
+        Face::Left => [
+            ([-offset, -offset, offset], Vec3::NEG_X, Vec2::X),
+            ([-offset, offset, offset], Vec3::NEG_X, Vec2::ZERO),
+            ([-offset, -offset, -offset], Vec3::NEG_X, Vec2::ONE),
+            ([-offset, offset, -offset], Vec3::NEG_X, Vec2::Y),
+        ],
+        Face::Top => [
+            ([offset, offset, -offset], Vec3::Y, Vec2::ZERO),
+            ([-offset, offset, -offset], Vec3::Y, Vec2::X),
+            ([offset, offset, offset], Vec3::Y, Vec2::Y),
+            ([-offset, offset, offset], Vec3::Y, Vec2::ONE),
+        ],
+        Face::Bottom => [
+            ([offset, -offset, offset], Vec3::NEG_Y, Vec2::X),
+            ([-offset, -offset, offset], Vec3::NEG_Y, Vec2::ZERO),
+            ([offset, -offset, -offset], Vec3::NEG_Y, Vec2::ONE),
+            ([-offset, -offset, -offset], Vec3::NEG_Y, Vec2::Y),
+        ],
+    };
+    let positions: Vec<_> = vertices.iter().map(|(p, _, _)| *p).collect();
+    let normals: Vec<_> = vertices.iter().map(|(_, n, _)| *n).collect();
+    let uvs: Vec<_> = vertices.iter().map(|(_, _, uv)| *uv).collect();
+
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
     mesh.set_indices(Some(Indices::U32(vec![0, 1, 2, 3])));
     VoxelFaceBundle {
         voxel_face: VoxelFace { face },
