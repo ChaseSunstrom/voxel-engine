@@ -1,3 +1,4 @@
+use super::constants::Constants;
 use bevy::{
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology},
@@ -85,20 +86,40 @@ struct VoxelBundle {
 }
 
 #[derive(Resource)]
-pub struct VoxelMaterial(Handle<StandardMaterial>);
+pub struct VoxelMetadata {
+    uv_offset: Vec2,
+    voxel_offset: f32,
+    texture: Handle<Image>,
+    default_material: Handle<StandardMaterial>,
+}
 
-// TODO: use this to insert the resource
-pub fn add_voxel_material(mut commands: Commands, mut materials: ResMut<Assets<StandardMaterial>>) {
-    let voxel_material = materials.add(StandardMaterial {
-        base_color: Color::rgb(0.2, 0.8, 0.2),
+pub fn load_voxel_metadata(
+    constants: Res<Constants>,
+    asset_server: Res<AssetServer>,
+    mut commands: Commands,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let texture = asset_server.load(&constants.voxel_texture_path);
+    let default_material = materials.add(StandardMaterial {
+        base_color_texture: Some(texture.clone()),
         ..default()
     });
-    commands.insert_resource(VoxelMaterial(voxel_material));
+    let voxel_texture_x_amount = 16;
+    let voxel_texture_y_amount = 16;
+    let uv_offset = 1.0 / Vec2::new(voxel_texture_x_amount as f32, voxel_texture_y_amount as f32);
+
+    commands.insert_resource(VoxelMetadata {
+        uv_offset,
+        voxel_offset: constants.voxel_size / 2.0,
+        texture,
+        default_material,
+    });
 }
 
 pub fn keyboard_input(
     keys: Res<Input<KeyCode>>,
-    asset_server: Res<AssetServer>,
+    constants: Res<Constants>,
+    voxel_metadata: Res<VoxelMetadata>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -109,27 +130,17 @@ pub fn keyboard_input(
         let y = rng.gen_range(-5..5) as f32;
         let z = rng.gen_range(-30..-20) as f32;
         let transform = Transform::from_xyz(x, y, z);
-        spawn_voxel(
-            transform,
-            asset_server,
-            &mut commands,
-            &mut meshes,
-            &mut materials,
-        );
+        spawn_voxel(transform, &voxel_metadata, &mut commands, &mut meshes);
     }
 }
 
 fn spawn_voxel(
     transform: Transform,
-    asset_server: Res<AssetServer>,
+    voxel_metadata: &VoxelMetadata,
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
-    materials: &mut ResMut<Assets<StandardMaterial>>,
-    //voxel_material: Res<VoxelMaterial>,
 ) {
     let kind = if rand::random() { Kind::Tnt } else { Kind::Oak };
-    // https://minecraft.fandom.com/wiki/Terrain.png
-    let texture = asset_server.load("textures/terrain.png");
     let texture_coordinates = kind.get_texture_coordinates();
     commands
         .spawn(VoxelBundle {
@@ -143,20 +154,13 @@ fn spawn_voxel(
             for face in enum_iterator::all() {
                 parent.spawn(create_voxel_face(
                     face,
-                    texture.clone(),
                     *texture_coordinates.get(&face).unwrap(),
+                    voxel_metadata,
                     meshes,
-                    materials,
-                    //voxel_material,
                 ));
             }
         });
 }
-
-// TODO: put into some "global resource"
-const VOXEL_SIZE: f32 = 1.0;
-const VOXEL_TEXTURE_X_AMOUNT: u8 = 16;
-const VOXEL_TEXTURE_Y_AMOUNT: u8 = 16;
 
 type Positions = Vec<[f32; 3]>;
 type Normals = Vec<Vec3>;
@@ -165,29 +169,15 @@ type Vertices = [([f32; 3], Vec3, Vec2)];
 
 fn create_voxel_face(
     face: Face,
-    texture: Handle<Image>,
     texture_coordinates: (u8, u8),
+    voxel_metadata: &VoxelMetadata,
     meshes: &mut ResMut<Assets<Mesh>>,
-    materials: &mut ResMut<Assets<StandardMaterial>>,
-    //voxel_material: Res<VoxelMaterial>,
 ) -> VoxelFaceBundle {
-    // TODO: remove once create_voxel_face is no longer a startup system
-    let voxel_material = materials.add(StandardMaterial {
-        // base_color: match face {
-        //     Face::Front => Color::CRIMSON,
-        //     Face::Back => Color::AQUAMARINE,
-        //     Face::Right => Color::GOLD,
-        //     Face::Left => Color::PURPLE,
-        //     Face::Top => Color::NAVY,
-        //     Face::Bottom => Color::FUCHSIA,
-        // },
-        base_color_texture: Some(texture),
-        ..default()
-    });
-    let mut mesh = Mesh::new(PrimitiveTopology::TriangleStrip);
-    let offset = VOXEL_SIZE / 2.0;
-    let uv_offset = 1.0 / Vec2::new(VOXEL_TEXTURE_X_AMOUNT as f32, VOXEL_TEXTURE_Y_AMOUNT as f32);
+    let offset = voxel_metadata.voxel_offset;
+    let uv_offset = voxel_metadata.uv_offset;
+    let voxel_material = voxel_metadata.default_material.clone();
     let texture_coordinates = Vec2::new(texture_coordinates.0 as f32, texture_coordinates.1 as f32);
+
     let top_left = (Vec2::ZERO + texture_coordinates) * uv_offset;
     let top_right = (Vec2::X + texture_coordinates) * uv_offset;
     let bottom_left = (Vec2::Y + texture_coordinates) * uv_offset;
@@ -232,6 +222,7 @@ fn create_voxel_face(
         ],
     };
     let (positions, normals, uvs) = destructure_vertices(vertices);
+    let mut mesh = Mesh::new(PrimitiveTopology::TriangleStrip);
 
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
@@ -242,7 +233,6 @@ fn create_voxel_face(
         voxel_face: VoxelFace { face },
         pbr: PbrBundle {
             material: voxel_material,
-            //material: voxel_material.0.clone(),
             mesh: meshes.add(mesh),
             ..default()
         },
