@@ -4,6 +4,7 @@ use bevy::{
     transform,
 };
 use enum_iterator::Sequence;
+use rand::Rng;
 
 #[derive(Sequence)]
 enum Face {
@@ -40,7 +41,6 @@ struct Voxel {
 struct VoxelBundle {
     voxel: Voxel,
     #[bundle]
-    // TODO: do we need Visibility for the voxel itself?
     spacial: SpatialBundle,
 }
 
@@ -56,14 +56,29 @@ pub fn add_voxel_material(mut commands: Commands, mut materials: ResMut<Assets<S
     commands.insert_resource(VoxelMaterial(voxel_material));
 }
 
-pub fn spawn_voxel(
+pub fn keyboard_input(
+    keys: Res<Input<KeyCode>>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    if keys.just_pressed(KeyCode::Return) {
+        let mut rng = rand::thread_rng();
+        let x = f32::round(rng.gen_range(-5.0..5.0));
+        let y = f32::round(rng.gen_range(-5.0..5.0));
+        let z = f32::round(rng.gen_range(-30.0..-20.0));
+        let transform = Transform::from_xyz(x, y, z);
+        spawn_voxel(transform, &mut commands, &mut meshes, &mut materials);
+    }
+}
+
+fn spawn_voxel(
+    transform: Transform,
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
     //voxel_material: Res<VoxelMaterial>,
 ) {
-    // TODO: provide this as a parameter
-    let transform = Transform::from_xyz(0.0, 0.0, -8.0);
     commands
         .spawn(VoxelBundle {
             voxel: Voxel { kind: Kind::Grass },
@@ -75,9 +90,7 @@ pub fn spawn_voxel(
         .with_children(|parent| {
             for face in enum_iterator::all() {
                 parent.spawn(create_voxel_face(
-                    face,
-                    &mut meshes,
-                    &mut materials,
+                    face, meshes, materials,
                     //voxel_material,
                 ));
             }
