@@ -58,27 +58,36 @@ pub fn add_voxel_material(mut commands: Commands, mut materials: ResMut<Assets<S
 
 pub fn keyboard_input(
     keys: Res<Input<KeyCode>>,
+    asset_server: Res<AssetServer>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     if keys.just_pressed(KeyCode::Return) {
         let mut rng = rand::thread_rng();
-        let x = f32::round(rng.gen_range(-5.0..5.0));
-        let y = f32::round(rng.gen_range(-5.0..5.0));
-        let z = f32::round(rng.gen_range(-30.0..-20.0));
+        let x = rng.gen_range(-5..5) as f32;
+        let y = rng.gen_range(-5..5) as f32;
+        let z = rng.gen_range(-30..-20) as f32;
         let transform = Transform::from_xyz(x, y, z);
-        spawn_voxel(transform, &mut commands, &mut meshes, &mut materials);
+        spawn_voxel(
+            transform,
+            asset_server,
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+        );
     }
 }
 
 fn spawn_voxel(
     transform: Transform,
+    asset_server: Res<AssetServer>,
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
     //voxel_material: Res<VoxelMaterial>,
 ) {
+    let texture = asset_server.load("textures/terrain.png");
     commands
         .spawn(VoxelBundle {
             voxel: Voxel { kind: Kind::Grass },
@@ -90,7 +99,10 @@ fn spawn_voxel(
         .with_children(|parent| {
             for face in enum_iterator::all() {
                 parent.spawn(create_voxel_face(
-                    face, meshes, materials,
+                    face,
+                    texture.clone(),
+                    meshes,
+                    materials,
                     //voxel_material,
                 ));
             }
@@ -106,20 +118,22 @@ type Vertices = [([f32; 3], Vec3, Vec2)];
 
 fn create_voxel_face(
     face: Face,
+    texture: Handle<Image>,
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
     //voxel_material: Res<VoxelMaterial>,
 ) -> VoxelFaceBundle {
     // TODO: remove once create_voxel_face is no longer a startup system
     let voxel_material = materials.add(StandardMaterial {
-        base_color: match face {
-            Face::Front => Color::CRIMSON,
-            Face::Back => Color::AQUAMARINE,
-            Face::Right => Color::GOLD,
-            Face::Left => Color::PURPLE,
-            Face::Top => Color::NAVY,
-            Face::Bottom => Color::FUCHSIA,
-        },
+        // base_color: match face {
+        //     Face::Front => Color::CRIMSON,
+        //     Face::Back => Color::AQUAMARINE,
+        //     Face::Right => Color::GOLD,
+        //     Face::Left => Color::PURPLE,
+        //     Face::Top => Color::NAVY,
+        //     Face::Bottom => Color::FUCHSIA,
+        // },
+        base_color_texture: Some(texture),
         ..default()
     });
     let mut mesh = Mesh::new(PrimitiveTopology::TriangleStrip);

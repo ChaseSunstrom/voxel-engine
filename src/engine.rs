@@ -12,7 +12,7 @@ pub fn start() {
     App::new()
         .insert_resource(ClearColor(Color::rgb(0.53, 0.8, 0.92)))
         .insert_resource(DirectionalLightShadowMap { size: 2048 })
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
         .add_plugin(NoCameraPlayerPlugin)
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(AtmospherePlugin)
