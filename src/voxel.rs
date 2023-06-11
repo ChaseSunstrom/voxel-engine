@@ -2,11 +2,12 @@ use bevy::{
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology},
     transform,
+    utils::HashMap,
 };
 use enum_iterator::Sequence;
 use rand::Rng;
 
-#[derive(Sequence)]
+#[derive(Sequence, Clone, Copy, PartialEq, Eq, Hash)]
 enum Face {
     Front,
     Back,
@@ -29,7 +30,46 @@ struct VoxelFaceBundle {
 }
 
 enum Kind {
-    Grass,
+    Tnt,
+    Oak,
+}
+
+impl Kind {
+    // TODO: put those in a file?
+    fn get_texture_coordinates(&self) -> HashMap<Face, (u8, u8)> {
+        match self {
+            Kind::Tnt => enum_iterator::all()
+                .map(|face| {
+                    (
+                        face,
+                        match face {
+                            Face::Front => (8, 0),
+                            Face::Back => (8, 0),
+                            Face::Right => (8, 0),
+                            Face::Left => (8, 0),
+                            Face::Top => (9, 0),
+                            Face::Bottom => (10, 0),
+                        },
+                    )
+                })
+                .collect(),
+            Kind::Oak => enum_iterator::all()
+                .map(|face| {
+                    (
+                        face,
+                        match face {
+                            Face::Front => (4, 1),
+                            Face::Back => (4, 1),
+                            Face::Right => (4, 1),
+                            Face::Left => (4, 1),
+                            Face::Top => (5, 1),
+                            Face::Bottom => (5, 1),
+                        },
+                    )
+                })
+                .collect(),
+        }
+    }
 }
 
 #[derive(Component)]
@@ -87,10 +127,13 @@ fn spawn_voxel(
     materials: &mut ResMut<Assets<StandardMaterial>>,
     //voxel_material: Res<VoxelMaterial>,
 ) {
+    let kind = if rand::random() { Kind::Tnt } else { Kind::Oak };
+    // https://minecraft.fandom.com/wiki/Terrain.png
     let texture = asset_server.load("textures/terrain.png");
+    let texture_coordinates = kind.get_texture_coordinates();
     commands
         .spawn(VoxelBundle {
-            voxel: Voxel { kind: Kind::Grass },
+            voxel: Voxel { kind },
             spacial: SpatialBundle {
                 transform,
                 ..default()
@@ -101,6 +144,7 @@ fn spawn_voxel(
                 parent.spawn(create_voxel_face(
                     face,
                     texture.clone(),
+                    *texture_coordinates.get(&face).unwrap(),
                     meshes,
                     materials,
                     //voxel_material,
@@ -111,6 +155,9 @@ fn spawn_voxel(
 
 // TODO: put into some "global resource"
 const VOXEL_SIZE: f32 = 1.0;
+const VOXEL_TEXTURE_X_AMOUNT: u8 = 16;
+const VOXEL_TEXTURE_Y_AMOUNT: u8 = 16;
+
 type Positions = Vec<[f32; 3]>;
 type Normals = Vec<Vec3>;
 type Uvs = Vec<Vec2>;
@@ -119,6 +166,7 @@ type Vertices = [([f32; 3], Vec3, Vec2)];
 fn create_voxel_face(
     face: Face,
     texture: Handle<Image>,
+    texture_coordinates: (u8, u8),
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
     //voxel_material: Res<VoxelMaterial>,
@@ -138,42 +186,49 @@ fn create_voxel_face(
     });
     let mut mesh = Mesh::new(PrimitiveTopology::TriangleStrip);
     let offset = VOXEL_SIZE / 2.0;
+    let uv_offset = 1.0 / Vec2::new(VOXEL_TEXTURE_X_AMOUNT as f32, VOXEL_TEXTURE_Y_AMOUNT as f32);
+    let texture_coordinates = Vec2::new(texture_coordinates.0 as f32, texture_coordinates.1 as f32);
+    let top_left = (Vec2::ZERO + texture_coordinates) * uv_offset;
+    let top_right = (Vec2::X + texture_coordinates) * uv_offset;
+    let bottom_left = (Vec2::Y + texture_coordinates) * uv_offset;
+    let bottom_right = (Vec2::ONE + texture_coordinates) * uv_offset;
+
     let vertices = &match face {
         Face::Front => [
-            ([-offset, -offset, offset], Vec3::Z, Vec2::Y),
-            ([offset, -offset, offset], Vec3::Z, Vec2::ONE),
-            ([-offset, offset, offset], Vec3::Z, Vec2::ZERO),
-            ([offset, offset, offset], Vec3::Z, Vec2::X),
+            ([-offset, -offset, offset], Vec3::Z, bottom_left),
+            ([offset, -offset, offset], Vec3::Z, bottom_right),
+            ([-offset, offset, offset], Vec3::Z, top_left),
+            ([offset, offset, offset], Vec3::Z, top_right),
         ],
         Face::Back => [
-            ([-offset, offset, -offset], Vec3::NEG_Z, Vec2::X),
-            ([offset, offset, -offset], Vec3::NEG_Z, Vec2::ZERO),
-            ([-offset, -offset, -offset], Vec3::NEG_Z, Vec2::ONE),
-            ([offset, -offset, -offset], Vec3::NEG_Z, Vec2::Y),
+            ([-offset, offset, -offset], Vec3::NEG_Z, top_right),
+            ([offset, offset, -offset], Vec3::NEG_Z, top_left),
+            ([-offset, -offset, -offset], Vec3::NEG_Z, bottom_right),
+            ([offset, -offset, -offset], Vec3::NEG_Z, bottom_left),
         ],
         Face::Right => [
-            ([offset, -offset, -offset], Vec3::X, Vec2::ONE),
-            ([offset, offset, -offset], Vec3::X, Vec2::X),
-            ([offset, -offset, offset], Vec3::X, Vec2::Y),
-            ([offset, offset, offset], Vec3::X, Vec2::ZERO),
+            ([offset, -offset, -offset], Vec3::X, bottom_right),
+            ([offset, offset, -offset], Vec3::X, top_right),
+            ([offset, -offset, offset], Vec3::X, bottom_left),
+            ([offset, offset, offset], Vec3::X, top_left),
         ],
         Face::Left => [
-            ([-offset, -offset, offset], Vec3::NEG_X, Vec2::ONE),
-            ([-offset, offset, offset], Vec3::NEG_X, Vec2::X),
-            ([-offset, -offset, -offset], Vec3::NEG_X, Vec2::Y),
-            ([-offset, offset, -offset], Vec3::NEG_X, Vec2::ZERO),
+            ([-offset, -offset, offset], Vec3::NEG_X, bottom_right),
+            ([-offset, offset, offset], Vec3::NEG_X, top_right),
+            ([-offset, -offset, -offset], Vec3::NEG_X, bottom_left),
+            ([-offset, offset, -offset], Vec3::NEG_X, top_left),
         ],
         Face::Top => [
-            ([offset, offset, -offset], Vec3::Y, Vec2::X),
-            ([-offset, offset, -offset], Vec3::Y, Vec2::ZERO),
-            ([offset, offset, offset], Vec3::Y, Vec2::ONE),
-            ([-offset, offset, offset], Vec3::Y, Vec2::Y),
+            ([offset, offset, -offset], Vec3::Y, top_right),
+            ([-offset, offset, -offset], Vec3::Y, top_left),
+            ([offset, offset, offset], Vec3::Y, bottom_right),
+            ([-offset, offset, offset], Vec3::Y, bottom_left),
         ],
         Face::Bottom => [
-            ([offset, -offset, offset], Vec3::NEG_Y, Vec2::X),
-            ([-offset, -offset, offset], Vec3::NEG_Y, Vec2::ZERO),
-            ([offset, -offset, -offset], Vec3::NEG_Y, Vec2::ONE),
-            ([-offset, -offset, -offset], Vec3::NEG_Y, Vec2::Y),
+            ([offset, -offset, offset], Vec3::NEG_Y, top_right),
+            ([-offset, -offset, offset], Vec3::NEG_Y, top_left),
+            ([offset, -offset, -offset], Vec3::NEG_Y, bottom_right),
+            ([-offset, -offset, -offset], Vec3::NEG_Y, bottom_left),
         ],
     };
     let (positions, normals, uvs) = destructure_vertices(vertices);

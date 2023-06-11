@@ -12,12 +12,7 @@ pub fn create_light(mut commands: Commands) {
             shadows_enabled: true,
             ..default()
         },
-        transform: Transform::from_rotation(Quat::from_euler(
-            EulerRot::XYZ,
-            (20.0_f32).to_radians(),
-            (10.0_f32).to_radians(),
-            (30.0_f32).to_radians(),
-        )),
+        transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -1.0, 0.5, 0.0)),
         ..default()
     });
 }
