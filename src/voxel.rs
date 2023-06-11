@@ -8,7 +8,7 @@ use bevy::{
     utils::HashMap,
 };
 use enum_iterator::Sequence;
-use rand::Rng;
+use rand::{seq::IteratorRandom, Rng};
 use regex::Regex;
 use strum::EnumString;
 
@@ -167,11 +167,9 @@ fn spawn_voxel(
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
 ) {
-    let kind = if rand::random() {
-        Kind::Tnt
-    } else {
-        Kind::OakWood
-    };
+    let kind = enum_iterator::all()
+        .choose_stable(&mut rand::thread_rng())
+        .unwrap();
     let texture_coordinates = voxel_metadata
         .texture_mapping
         .get(&kind)
