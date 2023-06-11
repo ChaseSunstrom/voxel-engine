@@ -3,7 +3,9 @@ use bevy::{
     render::{mesh::Indices, render_resource::PrimitiveTopology},
     transform,
 };
+use enum_iterator::Sequence;
 
+#[derive(Sequence)]
 enum Face {
     Front,
     Back,
@@ -56,8 +58,8 @@ pub fn add_voxel_material(mut commands: Commands, mut materials: ResMut<Assets<S
 
 pub fn spawn_voxel(
     mut commands: Commands,
-    meshes: ResMut<Assets<Mesh>>,
-    materials: ResMut<Assets<StandardMaterial>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
     //voxel_material: Res<VoxelMaterial>,
 ) {
     // TODO: provide this as a parameter
@@ -71,27 +73,40 @@ pub fn spawn_voxel(
             },
         })
         .with_children(|parent| {
-            parent.spawn(create_voxel_face(
-                Face::Bottom,
-                meshes,
-                materials,
-                //voxel_material,
-            ));
+            for face in enum_iterator::all() {
+                parent.spawn(create_voxel_face(
+                    face,
+                    &mut meshes,
+                    &mut materials,
+                    //voxel_material,
+                ));
+            }
         });
 }
 
 // TODO: put into some "global resource"
 const VOXEL_SIZE: f32 = 1.0;
+type Positions = Vec<[f32; 3]>;
+type Normals = Vec<Vec3>;
+type Uvs = Vec<Vec2>;
+type Vertices = [([f32; 3], Vec3, Vec2)];
 
 fn create_voxel_face(
     face: Face,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
     //voxel_material: Res<VoxelMaterial>,
 ) -> VoxelFaceBundle {
     // TODO: remove once create_voxel_face is no longer a startup system
     let voxel_material = materials.add(StandardMaterial {
-        base_color: Color::rgb(0.2, 0.8, 0.2),
+        base_color: match face {
+            Face::Front => Color::CRIMSON,
+            Face::Back => Color::AQUAMARINE,
+            Face::Right => Color::GOLD,
+            Face::Left => Color::PURPLE,
+            Face::Top => Color::NAVY,
+            Face::Bottom => Color::FUCHSIA,
+        },
         ..default()
     });
     let mut mesh = Mesh::new(PrimitiveTopology::TriangleStrip);
@@ -134,14 +149,13 @@ fn create_voxel_face(
             ([-offset, -offset, -offset], Vec3::NEG_Y, Vec2::Y),
         ],
     };
-    let positions: Vec<_> = vertices.iter().map(|(p, _, _)| *p).collect();
-    let normals: Vec<_> = vertices.iter().map(|(_, n, _)| *n).collect();
-    let uvs: Vec<_> = vertices.iter().map(|(_, _, uv)| *uv).collect();
+    let (positions, normals, uvs) = destructure_vertices(vertices);
 
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
     mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
     mesh.set_indices(Some(Indices::U32(vec![0, 1, 2, 3])));
+
     VoxelFaceBundle {
         voxel_face: VoxelFace { face },
         pbr: PbrBundle {
@@ -151,4 +165,19 @@ fn create_voxel_face(
             ..default()
         },
     }
+}
+
+fn destructure_vertices(vertices: &Vertices) -> (Positions, Normals, Uvs) {
+    let capacity = vertices.len();
+    let (mut positions, mut normals, mut uvs) = (
+        Vec::with_capacity(capacity),
+        Vec::with_capacity(capacity),
+        Vec::with_capacity(capacity),
+    );
+    for (position, normal, uv) in vertices {
+        positions.push(*position);
+        normals.push(*normal);
+        uvs.push(*uv);
+    }
+    (positions, normals, uvs)
 }
