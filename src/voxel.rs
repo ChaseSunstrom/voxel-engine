@@ -1,3 +1,5 @@
+use std::{cell::OnceCell, fs, str::FromStr, sync::OnceLock};
+
 use super::constants::Constants;
 use bevy::{
     prelude::*,
@@ -7,6 +9,15 @@ use bevy::{
 };
 use enum_iterator::Sequence;
 use rand::Rng;
+use regex::Regex;
+use strum::EnumString;
+
+type Positions = Vec<[f32; 3]>;
+type Normals = Vec<Vec3>;
+type Uvs = Vec<Vec2>;
+type Vertices = [([f32; 3], Vec3, Vec2)];
+type TextureCoordinates = HashMap<Face, (u8, u8)>;
+type TextureMapping = HashMap<Kind, TextureCoordinates>;
 
 #[derive(Sequence, Clone, Copy, PartialEq, Eq, Hash)]
 enum Face {
@@ -30,47 +41,11 @@ struct VoxelFaceBundle {
     pbr: PbrBundle,
 }
 
+#[derive(EnumString, Sequence, Clone, Copy, PartialEq, Eq, Hash)]
+#[strum(serialize_all = "snake_case")]
 enum Kind {
     Tnt,
-    Oak,
-}
-
-impl Kind {
-    // TODO: put those in a file?
-    fn get_texture_coordinates(&self) -> HashMap<Face, (u8, u8)> {
-        match self {
-            Kind::Tnt => enum_iterator::all()
-                .map(|face| {
-                    (
-                        face,
-                        match face {
-                            Face::Front => (8, 0),
-                            Face::Back => (8, 0),
-                            Face::Right => (8, 0),
-                            Face::Left => (8, 0),
-                            Face::Top => (9, 0),
-                            Face::Bottom => (10, 0),
-                        },
-                    )
-                })
-                .collect(),
-            Kind::Oak => enum_iterator::all()
-                .map(|face| {
-                    (
-                        face,
-                        match face {
-                            Face::Front => (4, 1),
-                            Face::Back => (4, 1),
-                            Face::Right => (4, 1),
-                            Face::Left => (4, 1),
-                            Face::Top => (5, 1),
-                            Face::Bottom => (5, 1),
-                        },
-                    )
-                })
-                .collect(),
-        }
-    }
+    OakWood,
 }
 
 #[derive(Component)]
@@ -91,6 +66,8 @@ pub struct VoxelMetadata {
     voxel_offset: f32,
     texture: Handle<Image>,
     default_material: Handle<StandardMaterial>,
+    texture_mapping: TextureMapping,
+    wip_texture_coordinates: TextureCoordinates,
 }
 
 pub fn load_voxel_metadata(
@@ -113,6 +90,8 @@ pub fn load_voxel_metadata(
         voxel_offset: constants.voxel_size / 2.0,
         texture,
         default_material,
+        texture_mapping: parse_texture_mapping(&constants.voxel_texture_mapping_path),
+        wip_texture_coordinates: enum_iterator::all().map(|face| (face, (12, 14))).collect(),
     });
 }
 
@@ -134,14 +113,70 @@ pub fn keyboard_input(
     }
 }
 
+fn parse_texture_mapping(filename: &str) -> TextureMapping {
+    let mut texture_mapping = HashMap::new();
+    let file_content = fs::read_to_string(filename).unwrap();
+
+    // each entry in the mapping file should have the following format:
+    // <kind>:<front>;<back>;<right>;<left>;<top>;<bottom>
+    // where kind is in snake_case and coordinates are of the form 'x,y'
+    static REGEX: OnceLock<Regex> = OnceLock::new();
+    let regex = REGEX.get_or_init(|| Regex::new(r"^\w+:(?:\d+,\d+;){5}\d+,\d+$").unwrap());
+
+    for line in file_content.lines().filter(|line| !line.is_empty()) {
+        if !regex.is_match(line) {
+            println!("warning: '{line}' did not match texture mapping format");
+            continue;
+        }
+        let parts: Vec<_> = line.split(':').collect();
+        let (kind_str, coordinates) = (parts[0], parts[1]);
+        let kind = Kind::from_str(kind_str);
+        if kind.is_err() {
+            println!("warning: '{kind_str}' does not exist");
+            continue;
+        }
+        let coordinates: Vec<_> = coordinates
+            .split(';')
+            .map(|c| {
+                let values: Vec<_> = c.split(',').collect();
+                (
+                    values[0].parse::<u8>().unwrap(),
+                    values[1].parse::<u8>().unwrap(),
+                )
+            })
+            .collect();
+
+        texture_mapping.insert(
+            kind.unwrap(),
+            HashMap::from([
+                (Face::Front, coordinates[0]),
+                (Face::Back, coordinates[1]),
+                (Face::Right, coordinates[2]),
+                (Face::Left, coordinates[3]),
+                (Face::Top, coordinates[4]),
+                (Face::Bottom, coordinates[5]),
+            ]),
+        );
+    }
+    texture_mapping
+}
+
 fn spawn_voxel(
     transform: Transform,
     voxel_metadata: &VoxelMetadata,
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
 ) {
-    let kind = if rand::random() { Kind::Tnt } else { Kind::Oak };
-    let texture_coordinates = kind.get_texture_coordinates();
+    let kind = if rand::random() {
+        Kind::Tnt
+    } else {
+        Kind::OakWood
+    };
+    let texture_coordinates = voxel_metadata
+        .texture_mapping
+        .get(&kind)
+        .unwrap_or(&voxel_metadata.wip_texture_coordinates);
+
     commands
         .spawn(VoxelBundle {
             voxel: Voxel { kind },
@@ -161,11 +196,6 @@ fn spawn_voxel(
             }
         });
 }
-
-type Positions = Vec<[f32; 3]>;
-type Normals = Vec<Vec3>;
-type Uvs = Vec<Vec2>;
-type Vertices = [([f32; 3], Vec3, Vec2)];
 
 fn create_voxel_face(
     face: Face,
