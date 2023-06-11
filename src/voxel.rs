@@ -140,10 +140,10 @@ fn create_voxel_face(
     let offset = VOXEL_SIZE / 2.0;
     let vertices = &match face {
         Face::Front => [
-            ([-offset, -offset, offset], Vec3::Z, Vec2::ZERO),
-            ([offset, -offset, offset], Vec3::Z, Vec2::X),
-            ([-offset, offset, offset], Vec3::Z, Vec2::Y),
-            ([offset, offset, offset], Vec3::Z, Vec2::ONE),
+            ([-offset, -offset, offset], Vec3::Z, Vec2::Y),
+            ([offset, -offset, offset], Vec3::Z, Vec2::ONE),
+            ([-offset, offset, offset], Vec3::Z, Vec2::ZERO),
+            ([offset, offset, offset], Vec3::Z, Vec2::X),
         ],
         Face::Back => [
             ([-offset, offset, -offset], Vec3::NEG_Z, Vec2::X),
@@ -152,22 +152,22 @@ fn create_voxel_face(
             ([offset, -offset, -offset], Vec3::NEG_Z, Vec2::Y),
         ],
         Face::Right => [
-            ([offset, -offset, -offset], Vec3::X, Vec2::ZERO),
+            ([offset, -offset, -offset], Vec3::X, Vec2::ONE),
             ([offset, offset, -offset], Vec3::X, Vec2::X),
             ([offset, -offset, offset], Vec3::X, Vec2::Y),
-            ([offset, offset, offset], Vec3::X, Vec2::ONE),
+            ([offset, offset, offset], Vec3::X, Vec2::ZERO),
         ],
         Face::Left => [
-            ([-offset, -offset, offset], Vec3::NEG_X, Vec2::X),
-            ([-offset, offset, offset], Vec3::NEG_X, Vec2::ZERO),
-            ([-offset, -offset, -offset], Vec3::NEG_X, Vec2::ONE),
-            ([-offset, offset, -offset], Vec3::NEG_X, Vec2::Y),
+            ([-offset, -offset, offset], Vec3::NEG_X, Vec2::ONE),
+            ([-offset, offset, offset], Vec3::NEG_X, Vec2::X),
+            ([-offset, -offset, -offset], Vec3::NEG_X, Vec2::Y),
+            ([-offset, offset, -offset], Vec3::NEG_X, Vec2::ZERO),
         ],
         Face::Top => [
-            ([offset, offset, -offset], Vec3::Y, Vec2::ZERO),
-            ([-offset, offset, -offset], Vec3::Y, Vec2::X),
-            ([offset, offset, offset], Vec3::Y, Vec2::Y),
-            ([-offset, offset, offset], Vec3::Y, Vec2::ONE),
+            ([offset, offset, -offset], Vec3::Y, Vec2::X),
+            ([-offset, offset, -offset], Vec3::Y, Vec2::ZERO),
+            ([offset, offset, offset], Vec3::Y, Vec2::ONE),
+            ([-offset, offset, offset], Vec3::Y, Vec2::Y),
         ],
         Face::Bottom => [
             ([offset, -offset, offset], Vec3::NEG_Y, Vec2::X),
