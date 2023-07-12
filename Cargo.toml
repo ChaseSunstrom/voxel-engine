@@ -11,10 +11,10 @@ opt-level = 1
 opt-level = 3
 
 [dependencies]
-bevy = "0.10.0"
-bevy_flycam = "0.10.0"
+bevy = "0.11.0"
+bevy_flycam = "0.10.1"
 bevy-inspector-egui = "0.18.3"
-bevy_atmosphere = "0.6.0"
+
 rand = "0.8.5"
 enum-iterator = "1.4.1"
 strum = { version = "0.24.1", features = ["derive"] }

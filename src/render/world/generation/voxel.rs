@@ -1,6 +1,6 @@
 use std::{cell::OnceCell, fs, str::FromStr, sync::OnceLock};
 
-use super::constants::Constants;
+use crate::util::constants::*;
 use bevy::{
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology},
@@ -37,7 +37,7 @@ struct VoxelFace {
 #[derive(Bundle)]
 struct VoxelFaceBundle {
     voxel_face: VoxelFace,
-    #[bundle]
+    #[bundle(ignore)]
     pbr: PbrBundle,
 }
 
@@ -56,7 +56,7 @@ struct Voxel {
 #[derive(Bundle)]
 struct VoxelBundle {
     voxel: Voxel,
-    #[bundle]
+    #[bundle(ignore)]
     spacial: SpatialBundle,
 }
 

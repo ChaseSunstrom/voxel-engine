@@ -1,4 +1,4 @@
-use bevy::{
+/*use bevy::{
     diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin},
     prelude::*,
 };
@@ -41,3 +41,4 @@ pub fn fps_system(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, Wit
         }
     }
 }
+*/

@@ -1,13 +1,9 @@
-#![allow(unused)]
-
-mod camera;
-mod constants;
-mod engine;
-mod fps;
-mod lighting;
 mod render;
-mod voxel;
+mod UI;
+mod util;
+mod game;
+
 
 fn main() {
-    engine::start();
+    game::start::start();
 }
